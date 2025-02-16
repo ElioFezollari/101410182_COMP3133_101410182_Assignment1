@@ -1,126 +1,183 @@
-const {
-  GraphQLObjectType,
-  GraphQLSchema,
-  GraphQLString,
-  GraphQLNonNull,
-} = require("graphql");
-const bcrypt = require("bcryptjs");
-const User = require("../models/user");
-
-const UserType = new GraphQLObjectType({
-  name: "User",
+const { GraphQLObjectType, GraphQLSchema, GraphQLList, GraphQLString, GraphQLInt,GraphQLNonNull } = require("graphql");
+const Employee = require("../models/employee");
+const EmployeeType = new GraphQLObjectType({
+  name: "Employee",
   fields: () => ({
     id: { type: GraphQLString },
-    username: { type: GraphQLString },
+    first_name: { type: GraphQLString },
+    last_name: { type: GraphQLString },
     email: { type: GraphQLString },
-    password: { type: GraphQLString },
+    gender: { type: GraphQLString },
+    designation: { type: GraphQLString },
+    salary: { type: GraphQLInt },
+    date_of_joining: { type: GraphQLString },
+    department: { type: GraphQLString },
+    employee_photo: { type: GraphQLString },
     created_at: { type: GraphQLString },
     updated_at: { type: GraphQLString },
   }),
 });
 
-
-const Login = new GraphQLObjectType({
-  name: "Login",
-  fields: {
-    user: {
-      type: UserType,
-      args: {
-        username: { type: GraphQLString }, 
-        email: { type: GraphQLString },   
-        password: { type: GraphQLString },
+const Query = new GraphQLObjectType({
+    name: "Query",
+    fields: {
+      getAllEmployees: {
+        type: new GraphQLList(EmployeeType),
+        async resolve(parent, args) {
+          return await Employee.find();
+        },
       },
-      async resolve(parent, args) {
-        const { username, email, password } = args;
-        const errors = [];
 
-        if (password.length < 6) {
-          errors.push("Password must be at least 6 characters long");
-        }
-
-        if (errors.length > 0) {
-          throw new Error(errors.join(", "));
-        }
-
-        let user;
-        if (username) {
-          user = await User.findOne({ username });
-        } else if (email) {
-          user = await User.findOne({ email });
-        }
-
-        if (!user) {
-          throw new Error("User not found");
-        }
-
-        const isPasswordMatch = await bcrypt.compare(password, user.password);
-        if (!isPasswordMatch) {
-          throw new Error("Invalid credentials");
-        }
-
-        return user;
+      getEmployeeById: {
+        type: EmployeeType,
+        args: {
+          id: { type: GraphQLString },
+        },
+        async resolve(parent, args) {
+          const { id } = args;
+          const employee = await Employee.findById(id);
+          if (!employee) {
+            throw new Error("Employee not found");
+          }
+          return employee;
+        },
       },
-    },
-  },
-});
-
-
-
-const Register = new GraphQLObjectType({
-  name: "Register",
-  fields: {
-    addUser: {
-      type: UserType,
-      args: {
-        username: { type: new GraphQLNonNull(GraphQLString) },
-        email: { type: new GraphQLNonNull(GraphQLString) },
-        password: { type: new GraphQLNonNull(GraphQLString) },
-      },
-      async resolve(parent, args) {
-        const { username, email, password } = args;
-
-        const errors = [];
-
-        if (username.length < 3) {
-          errors.push("Username must be at least 3 characters long");
-        }
-
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        if (!emailRegex.test(email)) {
-          errors.push("Invalid email format");
-        }
-
-        if (password.length < 6) {
-          errors.push("Password must be at least 6 characters long");
-        }
-
-        if (errors.length > 0) {
-          throw new Error(errors.join(", "));
-        }
-
-        if (errors.length > 0) {
-          throw new Error(
-            errors
-              .array()
-              .map((error) => error.msg)
-              .join(", ")
-          );
-        }
-        const newUser = new User({
-          username,
-          email,
-          password: password,
-        });
-
-        return newUser.save();
+  
+      searchEmployees: {
+        type: new GraphQLList(EmployeeType), 
+        args: {
+          designation: { type: GraphQLString }, 
+          department: { type: GraphQLString }, 
+        },
+        async resolve(parent, args) {
+          const { designation, department } = args;
+  
+          let query = {};
+  
+          if (designation) {
+            query.designation = designation;
+          }
+  
+          if (department) {
+            query.department = department;
+          }
+  
+          return await Employee.find(query); 
+        },
       },
     },
-  },
+  });
+  
+
+const Mutation = new GraphQLObjectType({
+    name: "Mutation",
+    fields: {
+      addEmployee: {
+        type: EmployeeType,
+        args: {
+          first_name: { type: new GraphQLNonNull(GraphQLString) },
+          last_name: { type: new GraphQLNonNull(GraphQLString) },
+          email: { type: new GraphQLNonNull(GraphQLString) },
+          gender: { type: GraphQLString },
+          designation: { type: new GraphQLNonNull(GraphQLString) },
+          salary: { type: new GraphQLNonNull(GraphQLInt) },
+          date_of_joining: { type: new GraphQLNonNull(GraphQLString) },
+          department: { type: new GraphQLNonNull(GraphQLString) },
+          employee_photo: { type: GraphQLString },
+        },
+        async resolve(parent, args) {
+          const {
+            first_name,
+            last_name,
+            email,
+            gender,
+            designation,
+            salary,
+            date_of_joining,
+            department,
+            employee_photo,
+          } = args;
+  
+          const newEmployee = new Employee({
+            first_name,
+            last_name,
+            email,
+            gender,
+            designation,
+            salary,
+            date_of_joining,
+            department,
+            employee_photo,
+          });
+  
+          return await newEmployee.save();
+        },
+      },
+  
+      updateEmployee: {
+        type: EmployeeType,
+        args: {
+          id: { type: new GraphQLNonNull(GraphQLString) },
+          first_name: { type: GraphQLString },
+          last_name: { type: GraphQLString },
+          email: { type: GraphQLString },
+          gender: { type: GraphQLString },
+          designation: { type: GraphQLString },
+          salary: { type: GraphQLInt },
+          department: { type: GraphQLString },
+          employee_photo: { type: GraphQLString },
+        },
+        async resolve(parent, args) {
+          const { id, first_name, last_name, email, gender, designation, salary, department, employee_photo } = args;
+  
+          let employee = await Employee.findById(id);
+          if (!employee) {
+            throw new Error("Employee not found");
+          }
+  
+          if (first_name) employee.first_name = first_name;
+          if (last_name) employee.last_name = last_name;
+          if (email) employee.email = email;
+          if (gender) employee.gender = gender;
+          if (designation) employee.designation = designation;
+          if (salary) employee.salary = salary;
+          if (department) employee.department = department;
+          if (employee_photo) employee.employee_photo = employee_photo;
+  
+          employee.updated_at = Date.now();
+  
+          return await employee.save();
+        },
+      },
+  
+      deleteEmployee: {
+        type: GraphQLString, 
+        args: {
+          id: { type: new GraphQLNonNull(GraphQLString) }, 
+        },
+        async resolve(parent, args) {
+          const { id } = args;
+  
+          const employee = await Employee.findById(id);
+          if (!employee) {
+            throw new Error("Employee not found");
+          }
+          await Employee.findByIdAndDelete(id);
+  
+          return "Employee deleted successfully"; 
+        },
+      },
+    },
+  });
+  
+
+
+  
+
+
+const employeeSchema = new GraphQLSchema({
+  query: Query,
+  mutation: Mutation,
 });
 
-const userSchema = new GraphQLSchema({
-  query: Login,
-  mutation: Register,
-});
-
-module.exports = { userSchema };
+module.exports = { employeeSchema };

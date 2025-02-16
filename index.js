@@ -2,8 +2,8 @@ var express = require('express');
 var { graphqlHTTP }  = require('express-graphql');
 const { default: mongoose } = require('mongoose');
 require('dotenv').config();
-const {userSchema} = require('./schema/employee')
-
+const {userSchema} = require('./schema/user')
+const {employeeSchema} = require('./schema/employee')
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
   })
@@ -21,6 +21,11 @@ mongoose.connect(process.env.MONGO_URI, {
 let app = express();
 app.use('/graphql/user', graphqlHTTP({
     schema: userSchema,
+    graphiql: true, 
+  }));
+
+  app.use('/graphql/employee', graphqlHTTP({
+    schema: employeeSchema,
     graphiql: true, 
   }));
 
