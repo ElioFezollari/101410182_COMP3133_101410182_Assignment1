@@ -26,13 +26,19 @@ const Login = new GraphQLObjectType({
     user: {
       type: UserType,
       args: {
-        username: { type: GraphQLString }, 
-        email: { type: GraphQLString },   
-        password: { type: GraphQLString },
+        username: { type: GraphQLString },
+        email: { type: GraphQLString },
+        password: { type: new GraphQLNonNull(GraphQLString) },
       },
       async resolve(parent, args) {
+        
         const { username, email, password } = args;
+        console.log(username,email,password)
         const errors = [];
+
+        if (!username && !email) {
+          errors.push("Username or email is required to login");
+        }
 
         if (password.length < 6) {
           errors.push("Password must be at least 6 characters long");
@@ -66,6 +72,7 @@ const Login = new GraphQLObjectType({
 
 
 
+
 const Register = new GraphQLObjectType({
   name: "Register",
   fields: {
@@ -78,7 +85,6 @@ const Register = new GraphQLObjectType({
       },
       async resolve(parent, args) {
         const { username, email, password } = args;
-
         const errors = [];
 
         if (username.length < 3) {
@@ -97,15 +103,15 @@ const Register = new GraphQLObjectType({
         if (errors.length > 0) {
           throw new Error(errors.join(", "));
         }
+        
+        const existingUser = await User.findOne({
+          $or: [{ username }, { email }]
+        });
 
-        if (errors.length > 0) {
-          throw new Error(
-            errors
-              .array()
-              .map((error) => error.msg)
-              .join(", ")
-          );
+        if (existingUser) {
+          throw new Error("User with that username or email already exists.");
         }
+
         const newUser = new User({
           username,
           email,

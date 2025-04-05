@@ -1,6 +1,7 @@
 var express = require('express');
 var { graphqlHTTP }  = require('express-graphql');
 const { default: mongoose } = require('mongoose');
+const cors = require('cors');
 require('dotenv').config();
 const {userSchema} = require('./schema/user')
 const {employeeSchema} = require('./schema/employee')
@@ -19,15 +20,25 @@ mongoose.connect(process.env.MONGO_URI, {
 
 
 let app = express();
-app.use('/graphql/user', graphqlHTTP({
+app.use(cors());
+
+app.use('/graphql/user', graphqlHTTP((req, res, graphQLParams) => {
+  console.log('Incoming GraphQL Request:');
+  
+  if (graphQLParams) {
+    console.log('Query:', graphQLParams.query);
+    console.log('Variables:', graphQLParams.variables);
+  }
+
+  return {
     schema: userSchema,
-    graphiql: true, 
-  }));
+    graphiql: true,
+  };
+}));
 
   app.use('/graphql/employee', graphqlHTTP({
     schema: employeeSchema,
     graphiql: true, 
   }));
 
-//Start Server to listen
 app.listen(4000, () => console.log('Express GraphQL Server Now Running On http://localhost:4000/graphql'));
